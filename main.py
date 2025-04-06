@@ -1,10 +1,11 @@
 import cv2
 import mediapipe as mp
-import pyautogui
 from deepface import DeepFace
 import threading
 import numpy as np
 import time
+import speech_recognition as sr
+import pyautogui
 
 # Setup
 mp_hands = mp.solutions.hands
@@ -53,6 +54,44 @@ def detect_mood(frame, landmarks):
     except Exception as e:
         mood_label = "Face not clear"
         print("Error:", e)
+
+# Listen for voice commands
+def listen_for_commands():
+    recognizer = sr.Recognizer()
+    mic = sr.Microphone()
+
+    with mic as source:
+        print("Listening for commands...")
+        recognizer.adjust_for_ambient_noise(source, duration=1)  # Adjusting for ambient noise
+        while True:
+            try:
+                # Increased timeout to 15 seconds
+                audio = recognizer.listen(source, timeout=15)  # Increased timeout to 15 seconds
+                command = recognizer.recognize_google(audio)
+                print(f"Command received: {command}")
+                
+                # Handle commands
+                if "click" in command.lower():
+                    print("Performing click...")
+                    pyautogui.click(button='left')  # Perform left click when "click" is said
+                elif "right click" in command.lower():
+                    print("Performing right click...")
+                    pyautogui.click(button='right')  # Perform right click when "right click" is said
+                elif "scroll up" in command.lower():
+                    print("Scrolling up...")
+                    pyautogui.scroll(10)  # Perform scroll up
+                elif "scroll down" in command.lower():
+                    print("Scrolling down...")
+                    pyautogui.scroll(-10)  # Perform scroll down
+                else:
+                    print(f"Command '{command}' not recognized.")
+                    
+            except sr.WaitTimeoutError:
+                print("Listening timeout, waiting for command...")
+            except sr.RequestError as e:
+                print(f"Error with the speech recognition service: {e}")
+            except Exception as e:
+                print(f"Error: {e}")
 
 def start_camera():
     global previous_nose_y, last_mood_time
@@ -153,4 +192,8 @@ def start_camera():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
+    # Start the command listener in a separate thread
+    threading.Thread(target=listen_for_commands, daemon=True).start()
+    
+    # Start the camera
     start_camera()
